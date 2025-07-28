@@ -1,56 +1,194 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Page {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  is_published: boolean;
+}
 
 const AdminDashboard = () => {
-  const [selectedPage, setSelectedPage] = useState("about");
+  const [selectedPage, setSelectedPage] = useState("about-us");
   const [content, setContent] = useState("");
-  const [images, setImages] = useState<File[]>([]);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [pageTitle, setPageTitle] = useState("");
+  const [pages, setPages] = useState<Page[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
-  const pages = {
+  const pageConfig = {
     "about-us": "About Us",
-    contact: "Contact Us", 
-    faq: "FAQ",
+    "contact": "Contact Us", 
+    "faq": "FAQ",
     "track-order": "Track Order",
-    privacy: "Privacy Policy"
+    "privacy": "Privacy Policy"
   };
 
-  const loadPageContent = (page: string) => {
-    const savedContent = localStorage.getItem(`${page}-content`) || "";
-    setContent(savedContent);
-    setSelectedPage(page);
+  useEffect(() => {
+    loadPages();
+  }, []);
+
+  useEffect(() => {
+    if (selectedPage && pages.length > 0) {
+      loadPageContent(selectedPage);
+    }
+  }, [selectedPage, pages]);
+
+  const loadPages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('pages')
+        .select('*')
+        .in('slug', Object.keys(pageConfig));
+
+      if (error) throw error;
+
+      setPages(data || []);
+      
+      // Create missing pages
+      const existingSlugs = data?.map(p => p.slug) || [];
+      const missingSlugs = Object.keys(pageConfig).filter(slug => !existingSlugs.includes(slug));
+      
+      for (const slug of missingSlugs) {
+        await createPage(slug, pageConfig[slug as keyof typeof pageConfig]);
+      }
+      
+      if (missingSlugs.length > 0) {
+        loadPages(); // Reload to get the newly created pages
+      }
+    } catch (error) {
+      console.error('Error loading pages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load pages",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const savePageContent = () => {
-    localStorage.setItem(`${selectedPage}-content`, content);
-    alert("Content saved successfully!");
+  const createPage = async (slug: string, title: string) => {
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .insert({
+          slug,
+          title,
+          content: `<div class="container mx-auto px-6 py-12">
+            <h1 class="text-4xl font-bold text-white mb-8">${title}</h1>
+            <p class="text-white/70 text-lg">Edit this page content in the admin dashboard.</p>
+          </div>`,
+          is_published: true
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error creating page:', error);
+    }
+  };
+
+  const loadPageContent = (pageSlug: string) => {
+    const page = pages.find(p => p.slug === pageSlug);
+    if (page) {
+      setContent(page.content);
+      setPageTitle(page.title);
+      setSelectedPage(pageSlug);
+    }
+  };
+
+  const uploadImageToSupabase = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `page-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        // If uploads bucket doesn't exist, try to create it or use public folder fallback
+        console.warn('Upload to Supabase storage failed, using fallback:', uploadError);
+        return URL.createObjectURL(file); // Fallback to blob URL
+      }
+
+      const { data } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading to Supabase:', error);
+      return URL.createObjectURL(file); // Fallback to blob URL
+    }
+  };
+
+  const savePageContent = async () => {
+    if (!selectedPage) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .update({
+          title: pageTitle,
+          content: content,
+          is_published: true
+        })
+        .eq('slug', selectedPage);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Page content saved successfully!"
+      });
+
+      // Update local state
+      setPages(prev => prev.map(p => 
+        p.slug === selectedPage 
+          ? { ...p, title: pageTitle, content: content }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error saving page:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save page content",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newImages = Array.from(e.target.files);
-      setImages(prev => [...prev, ...newImages]);
+      const files = Array.from(e.target.files);
       
-      // Upload images and get URLs
-      for (const file of newImages) {
+      for (const file of files) {
         try {
-          const formData = new FormData();
-          formData.append('file', file);
-          
-          // Create object URL for immediate preview
-          const imageUrl = URL.createObjectURL(file);
-          const imageHtml = `<img src="${imageUrl}" alt="${file.name}" class="max-w-full h-auto my-4 rounded-lg" />`;
-          setContent(prev => prev + '\n' + imageHtml);
-          
-          // Store the uploaded image URL for later use
-          setUploadedImages(prev => [...prev, imageUrl]);
+          const imageUrl = await uploadImageToSupabase(file);
+          if (imageUrl) {
+            const imageHtml = `<img src="${imageUrl}" alt="${file.name}" class="max-w-full h-auto my-4 rounded-lg" />`;
+            setContent(prev => prev + '\n' + imageHtml);
+          }
         } catch (error) {
           console.error('Error uploading image:', error);
-          alert('Error uploading image: ' + file.name);
+          toast({
+            title: "Error",
+            description: `Failed to upload ${file.name}`,
+            variant: "destructive"
+          });
         }
       }
     }
@@ -68,19 +206,42 @@ const AdminDashboard = () => {
         
         if (file) {
           try {
-            // Create object URL for immediate preview
-            const imageUrl = URL.createObjectURL(file);
-            const imageHtml = `<img src="${imageUrl}" alt="Pasted image" class="max-w-full h-auto my-4 rounded-lg" />`;
-            setContent(prev => prev + '\n' + imageHtml);
-            
-            // Store the uploaded image URL for later use
-            setUploadedImages(prev => [...prev, imageUrl]);
-            setImages(prev => [...prev, file]);
+            const imageUrl = await uploadImageToSupabase(file);
+            if (imageUrl) {
+              const imageHtml = `<img src="${imageUrl}" alt="Pasted image" class="max-w-full h-auto my-4 rounded-lg" />`;
+              setContent(prev => prev + '\n' + imageHtml);
+              
+              toast({
+                title: "Success",
+                description: "Image pasted successfully!"
+              });
+            }
           } catch (error) {
             console.error('Error processing pasted image:', error);
-            alert('Error processing pasted image');
+            toast({
+              title: "Error",
+              description: "Failed to process pasted image",
+              variant: "destructive"
+            });
           }
         }
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+    
+    for (const file of files) {
+      try {
+        const imageUrl = await uploadImageToSupabase(file);
+        if (imageUrl) {
+          const imageHtml = `<img src="${imageUrl}" alt="${file.name}" class="max-w-full h-auto my-4 rounded-lg" />`;
+          setContent(prev => prev + '\n' + imageHtml);
+        }
+      } catch (error) {
+        console.error('Error uploading dropped image:', error);
       }
     }
   };
@@ -111,6 +272,17 @@ const AdminDashboard = () => {
     console.log("Signing out...");
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
@@ -131,22 +303,28 @@ const AdminDashboard = () => {
             <CardTitle>Page Editor</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="about-us" className="space-y-6">
+            <Tabs value={selectedPage} onValueChange={setSelectedPage} className="space-y-6">
               <TabsList className="grid grid-cols-5 w-full">
-                {Object.entries(pages).map(([key, label]) => (
+                {Object.entries(pageConfig).map(([key, label]) => (
                   <TabsTrigger 
                     key={key} 
                     value={key}
-                    onClick={() => loadPageContent(key)}
                   >
                     {label}
                   </TabsTrigger>
                 ))}
               </TabsList>
 
-              {Object.keys(pages).map(pageKey => (
+              {Object.keys(pageConfig).map(pageKey => (
                 <TabsContent key={pageKey} value={pageKey} className="space-y-4">
                   <div className="space-y-4 mb-4">
+                    <Input
+                      placeholder="Page Title"
+                      value={pageTitle}
+                      onChange={(e) => setPageTitle(e.target.value)}
+                      className="text-lg font-semibold"
+                    />
+                    
                     <div className="flex gap-2">
                       <Input
                         type="file"
@@ -192,21 +370,28 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <Textarea
-                    placeholder={`Enter HTML content for ${pages[pageKey as keyof typeof pages]}... (Tip: Ctrl+V to paste images)`}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onPaste={handlePaste}
-                    className="min-h-[400px] font-mono text-sm"
-                  />
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="relative"
+                  >
+                    <Textarea
+                      placeholder={`Enter HTML content for ${pageConfig[pageKey as keyof typeof pageConfig]}... (Tip: Ctrl+V to paste images, or drag & drop them here)`}
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      onPaste={handlePaste}
+                      className="min-h-[400px] font-mono text-sm"
+                    />
+                  </div>
 
                   <div className="flex gap-4">
                     <Button 
                       onClick={savePageContent}
+                      disabled={saving}
                       className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900"
                       variant="outline"
                     >
-                      Save Content
+                      {saving ? "Saving..." : "Save Content"}
                     </Button>
                   </div>
 
