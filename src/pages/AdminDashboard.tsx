@@ -12,7 +12,7 @@ const AdminDashboard = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
   const pages = {
-    about: "About Us",
+    "about-us": "About Us",
     contact: "Contact Us", 
     faq: "FAQ",
     "track-order": "Track Order",
@@ -51,6 +51,35 @@ const AdminDashboard = () => {
         } catch (error) {
           console.error('Error uploading image:', error);
           alert('Error uploading image: ' + file.name);
+        }
+      }
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        
+        if (file) {
+          try {
+            // Create object URL for immediate preview
+            const imageUrl = URL.createObjectURL(file);
+            const imageHtml = `<img src="${imageUrl}" alt="Pasted image" class="max-w-full h-auto my-4 rounded-lg" />`;
+            setContent(prev => prev + '\n' + imageHtml);
+            
+            // Store the uploaded image URL for later use
+            setUploadedImages(prev => [...prev, imageUrl]);
+            setImages(prev => [...prev, file]);
+          } catch (error) {
+            console.error('Error processing pasted image:', error);
+            alert('Error processing pasted image');
+          }
         }
       }
     }
@@ -102,7 +131,7 @@ const AdminDashboard = () => {
             <CardTitle>Page Editor</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="about" className="space-y-6">
+            <Tabs defaultValue="about-us" className="space-y-6">
               <TabsList className="grid grid-cols-5 w-full">
                 {Object.entries(pages).map(([key, label]) => (
                   <TabsTrigger 
@@ -164,9 +193,10 @@ const AdminDashboard = () => {
                   </div>
 
                   <Textarea
-                    placeholder={`Enter HTML content for ${pages[pageKey as keyof typeof pages]}...`}
+                    placeholder={`Enter HTML content for ${pages[pageKey as keyof typeof pages]}... (Tip: Ctrl+V to paste images)`}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
+                    onPaste={handlePaste}
                     className="min-h-[400px] font-mono text-sm"
                   />
 

@@ -238,7 +238,7 @@ const PageLayout = ({ children }: PageLayoutProps) => {
             <div>
               <h5 className="font-semibold mb-4 text-red-600">Quick Links</h5>
               <ul className="space-y-2 text-white/70">
-                <li><Link to="/page/about" className="hover:text-red-600 transition-colors">About Us</Link></li>
+                <li><Link to="/page/about-us" className="hover:text-red-600 transition-colors">About Us</Link></li>
                 <li><Link to="/page/size-guide" className="hover:text-red-600 transition-colors">Size Guide</Link></li>
                 <li><Link to="/page/shipping" className="hover:text-red-600 transition-colors">Shipping</Link></li>
                 <li><Link to="/page/returns" className="hover:text-red-600 transition-colors">Returns</Link></li>
