@@ -149,7 +149,7 @@ const Index = () => {
                       </Link>
                     </Button>
                   )}
-                  <Button variant="outline" onClick={signOut} size="sm" className="border-white/20 text-white hover:bg-white/20 hover:text-black">
+                  <Button variant="outline" onClick={signOut} size="sm" className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900">
                     <User className="w-4 h-4 mr-2" />
                     Sign Out
                   </Button>
@@ -200,7 +200,7 @@ const Index = () => {
                                 size="sm" 
                                 variant="outline" 
                                 onClick={() => removeFromCart(item.id)}
-                                className="border-white/20 text-white hover:bg-white/20 hover:text-black min-w-[32px]"
+                                className="border-red-500 text-red-500 bg-white hover:bg-red-100 hover:text-red-700 min-w-[32px]"
                               >
                                 -
                               </Button>
@@ -212,7 +212,7 @@ const Index = () => {
                                   const product = products.find(p => p.id === item.id);
                                   if (product) addToCart(product);
                                 }}
-                                className="border-white/20 text-white hover:bg-white/20 hover:text-black min-w-[32px]"
+                                className="border-red-500 text-red-500 bg-white hover:bg-red-100 hover:text-red-700 min-w-[32px]"
                               >
                                 +
                               </Button>

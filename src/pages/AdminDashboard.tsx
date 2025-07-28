@@ -9,13 +9,14 @@ const AdminDashboard = () => {
   const [selectedPage, setSelectedPage] = useState("about");
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
   const pages = {
     about: "About Us",
     contact: "Contact Us", 
     faq: "FAQ",
     "track-order": "Track Order",
-    "privacy-policy": "Privacy Policy"
+    privacy: "Privacy Policy"
   };
 
   const loadPageContent = (page: string) => {
@@ -29,23 +30,51 @@ const AdminDashboard = () => {
     alert("Content saved successfully!");
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newImages = Array.from(e.target.files);
       setImages(prev => [...prev, ...newImages]);
       
-      // Insert image placeholders into content
-      newImages.forEach(file => {
-        const imageUrl = URL.createObjectURL(file);
-        const imageHtml = `<img src="${imageUrl}" alt="${file.name}" class="max-w-full h-auto my-4" />`;
-        setContent(prev => prev + imageHtml);
-      });
+      // Upload images and get URLs
+      for (const file of newImages) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          // Create object URL for immediate preview
+          const imageUrl = URL.createObjectURL(file);
+          const imageHtml = `<img src="${imageUrl}" alt="${file.name}" class="max-w-full h-auto my-4 rounded-lg" />`;
+          setContent(prev => prev + '\n' + imageHtml);
+          
+          // Store the uploaded image URL for later use
+          setUploadedImages(prev => [...prev, imageUrl]);
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          alert('Error uploading image: ' + file.name);
+        }
+      }
     }
   };
 
   const insertImagePlaceholder = () => {
-    const imageHtml = `<img src="/api/placeholder/400/300" alt="Image placeholder" class="max-w-full h-auto my-4" />`;
-    setContent(prev => prev + imageHtml);
+    const imageHtml = `<img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8" alt="Image placeholder" class="max-w-full h-auto my-4 rounded-lg" />`;
+    setContent(prev => prev + '\n' + imageHtml);
+  };
+
+  const insertTextBlock = (type: 'heading' | 'paragraph' | 'button') => {
+    let html = '';
+    switch (type) {
+      case 'heading':
+        html = '<h2 class="text-3xl font-bold text-white mb-6">Your Heading Here</h2>';
+        break;
+      case 'paragraph':
+        html = '<p class="text-white/70 mb-4">Your paragraph text here. You can edit this content directly.</p>';
+        break;
+      case 'button':
+        html = '<button class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors">Call to Action</button>';
+        break;
+    }
+    setContent(prev => prev + '\n' + html);
   };
 
   const signOut = () => {
@@ -88,21 +117,50 @@ const AdminDashboard = () => {
 
               {Object.keys(pages).map(pageKey => (
                 <TabsContent key={pageKey} value={pageKey} className="space-y-4">
-                  <div className="flex gap-4 mb-4">
-                    <Input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="flex-1"
-                    />
-                    <Button 
-                      onClick={insertImagePlaceholder}
-                      variant="outline"
-                      className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900"
-                    >
-                      Insert Placeholder
-                    </Button>
+                  <div className="space-y-4 mb-4">
+                    <div className="flex gap-2">
+                      <Input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={insertImagePlaceholder}
+                        variant="outline"
+                        className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        Placeholder
+                      </Button>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => insertTextBlock('heading')}
+                        variant="outline"
+                        className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900"
+                        size="sm"
+                      >
+                        + Heading
+                      </Button>
+                      <Button 
+                        onClick={() => insertTextBlock('paragraph')}
+                        variant="outline"
+                        className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900"
+                        size="sm"
+                      >
+                        + Paragraph
+                      </Button>
+                      <Button 
+                        onClick={() => insertTextBlock('button')}
+                        variant="outline"
+                        className="border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900"
+                        size="sm"
+                      >
+                        + Button
+                      </Button>
+                    </div>
                   </div>
 
                   <Textarea
@@ -126,7 +184,7 @@ const AdminDashboard = () => {
                     <div className="mt-6">
                       <h3 className="text-lg font-semibold mb-2">Preview</h3>
                       <div 
-                        className="border rounded-lg p-4 bg-white"
+                        className="border rounded-lg p-6 bg-black text-white min-h-[200px]"
                         dangerouslySetInnerHTML={{ __html: content }}
                       />
                     </div>
