@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PageLayout from "@/components/shared/PageLayout";
+import ReactMarkdown from "react-markdown";
 
 interface Page {
   id: string;
@@ -75,10 +76,32 @@ const PageView = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-8 bg-gradient-to-r from-white to-red-600 bg-clip-text text-transparent">
               {page.title}
             </h1>
-            <div className="prose prose-lg max-w-none">
-              <div className="whitespace-pre-wrap text-white/90 leading-relaxed text-lg">
+            <div className="prose prose-lg max-w-none text-white/90 leading-relaxed text-lg">
+              <ReactMarkdown 
+                components={{
+                  img: ({ src, alt }) => (
+                    <img 
+                      src={src} 
+                      alt={alt} 
+                      className="rounded-lg shadow-lg max-w-full h-auto"
+                    />
+                  ),
+                  p: ({ children }) => (
+                    <p className="mb-4 text-white/90">{children}</p>
+                  ),
+                  h1: ({ children }) => (
+                    <h1 className="text-2xl font-bold mb-4 text-white">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-xl font-bold mb-3 text-white">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-lg font-bold mb-2 text-white">{children}</h3>
+                  )
+                }}
+              >
                 {page.content}
-              </div>
+              </ReactMarkdown>
             </div>
           </div>
         </div>
