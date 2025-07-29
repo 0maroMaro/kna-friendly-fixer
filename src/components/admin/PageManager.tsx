@@ -111,46 +111,24 @@ const PageManager = () => {
   const uploadImage = async (file: File) => {
     setUploading(true);
     try {
-      // First, let's try to list buckets to see what's available
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      
-      if (listError) {
-        console.error('Error listing buckets:', listError);
-        throw new Error('Unable to access storage. Please ensure storage is set up in your Supabase project.');
-      }
-
-      // Check if we have any buckets
-      if (!buckets || buckets.length === 0) {
-        throw new Error('No storage buckets found. Please create a storage bucket in your Supabase dashboard first.');
-      }
-
-      // Try to use the first available bucket
-      const bucketName = buckets[0].name;
-      console.log('Available buckets:', buckets.map(b => b.name));
-      console.log('Using bucket:', bucketName);
-
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `page-images/${fileName}`;
+      const filePath = fileName; // Just use the filename since the bucket is already "page-images"
 
       const { error: uploadError } = await supabase.storage
-        .from(bucketName)
+        .from('page-images')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
-        .from(bucketName)
+        .from('page-images')
         .getPublicUrl(filePath);
 
       return data.publicUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to upload image. Please check your storage setup.");
-      }
+      toast.error("Failed to upload image");
       return null;
     } finally {
       setUploading(false);
