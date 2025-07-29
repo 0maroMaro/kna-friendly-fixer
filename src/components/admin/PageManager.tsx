@@ -116,13 +116,13 @@ const PageManager = () => {
       const filePath = `page-images/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('images')
+        .from('public')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
-        .from('images')
+        .from('public')
         .getPublicUrl(filePath);
 
       return data.publicUrl;
