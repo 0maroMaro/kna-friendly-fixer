@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProductManager } from '@/components/admin/ProductManager';
 import { CategoryManager } from '@/components/admin/CategoryManager';
 import PageManager from '@/components/admin/PageManager';
-import { LogOut, Settings, Package, FolderOpen, FileText } from 'lucide-react';
+import OrderManager from '@/components/admin/OrderManager';
+import { LogOut, ShoppingCart, Package, FolderOpen, FileText } from 'lucide-react';
 
 const Admin = () => {
   const { user, profile, signOut, loading } = useAuth();
@@ -62,9 +63,9 @@ const Admin = () => {
               <FileText className="w-4 h-4" />
               Pages
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4" />
+              Orders
             </TabsTrigger>
           </TabsList>
 
@@ -80,18 +81,8 @@ const Admin = () => {
             <PageManager />
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Settings</CardTitle>
-                <CardDescription>
-                  Manage your store settings and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
+          <TabsContent value="orders" className="mt-6">
+            <OrderManager />
           </TabsContent>
         </Tabs>
       </main>
